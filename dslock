@@ -1,0 +1,83 @@
+#!/bin/sh
+
+## ## ## ## ## ##
+# User variables | MUST BE CHANGED
+## ## ## ## ## ##
+
+TITLE="YOU DIED"
+TMPDIR="/tmp"
+OUTDIR="/tmp"
+OUTFILE="lock.png"
+
+### ### ### ### ###
+# Soft variables | CAN BE CHANGED
+### ### ### ### ###
+
+FONT="OptimusPrincepsSemiBold"
+TEXTCOLOR="rgba(105,13,16,1)"
+TEXTPOSITION=$(( 2*100/3 ))
+TEXTSIZE=$(( 17*100/100 ))
+
+#### #### #### #### #### #### ####
+# Preparing lockscreen picture | IF OUTFILE DOESN'T ALREADY EXIST
+#### #### #### #### #### #### ####
+
+function generate_lockscreen {
+  
+  # Preparing lockscreen image 
+  TOTALSIZE=$(xrandr -q | grep current | cut -d " " -f8,9,10 | sed s/\ //g | sed s/,//g)
+  convert -size ${TOTALSIZE} xc:none ${OUTDIR}/${OUTFILE}
+
+  IDENTIFER=0
+  for monitor in $(xrandr -q | grep \* | sed -n ${IDENTIFIER}p | awk '{print $1}') ; do
+ 
+    IDENTIFIER=$(( IDENTIFIER + 1 ))
+    WIDTH=$(echo $monitor | cut -d "x" -f1)
+    HEIGHT=$(echo $monitor | cut -d "x" -f2)
+    H0=$(( ($TEXTPOSITION-($TEXTSIZE-1))*$HEIGHT/100 ))
+    H1=$(( ($TEXTPOSITION+($TEXTSIZE-1))*$HEIGHT/100 ))
+    SIZEH=$(( $TEXTSIZE*$HEIGHT/100 ))
+
+  # Generating Gradient
+    convert -size ${WIDTH}x${HEIGHT} xc:none -fill 'rgba(0,0,0,0.95)' -stroke 'rgba(0,0,0,0.95)' \
+            -draw "polygon 0,${H0} ${WIDTH},${H0} ${WIDTH},${H1} 0,${H1}"\
+	    -blur 0x50\
+	    ${TMPDIR}/gradient${IDENTIFIER}.png
+
+  # Generating Label
+    convert -size x${SIZEH} -background none -fill ${TEXTCOLOR} \
+            -font ${FONT} label:"${TITLE}" -gravity center ${TMPDIR}/label${IDENTIFIER}.png
+
+    LABELW=$(identify ${TMPDIR}/label${IDENTIFIER}.png | awk '{print $3}' | cut -d "x" -f1)
+    LABELH=$(identify ${TMPDIR}/label${IDENTIFIER}.png | awk '{print $3}' | cut -d "x" -f2)
+    OFFSETW=$(( $WIDTH/2-$LABELW/2 ))
+    OFFSETH=$(( (($TEXTPOSITION)*$HEIGHT/100)-($LABELH-10)/2 ))
+
+  # Composing gradient & label together
+    convert -size ${WIDTH}x${HEIGHT} xc:none \
+	    ${TMPDIR}/gradient${IDENTIFIER}.png -geometry +0+0 -composite \
+	    ${TMPDIR}/label${IDENTIFIER}.png -geometry +${OFFSETW}+${OFFSETH} -composite \
+	    ${TMPDIR}/lock${IDENTIFIER}.png
+
+  # Compose lockscreens together (per monitor)
+    GEOMETRY=$( xrandr -q | grep -w connected | sed -n ${IDENTIFIER}p | sed s/\ primary//g | cut -d " " -f3)
+    convert ${OUTDIR}/${OUTFILE} \
+	    ${TMPDIR}/lock${IDENTIFIER}.png -geometry ${GEOMETRY} -composite \
+  	    ${OUTDIR}/${OUTFILE}
+  done
+}
+
+#### #### #### #### #### #### ####
+# Scroting & composing pictures
+#### #### #### #### #### #### ####
+
+HUE=(-set colorspace Gray -separate -average)
+IMAGE="$(mktemp).png"
+ICON=$OUTDIR/$OUTFILE
+
+scrot $IMAGE
+[[ ! -f "$ICON" ]] && generate_lockscreen
+[[ -f "$ICON" ]] && convert "$IMAGE" "${HUE[@]}" "$ICON" -gravity center -composite -matte "$IMAGE"
+
+i3lock -t -n -u -i "$IMAGE"
+
