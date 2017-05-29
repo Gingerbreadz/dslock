@@ -4,7 +4,7 @@
 # User variables | MUST BE CHANGED
 ## ## ## ## ## ##
 
-TITLE="YOU DIED"
+TITLE="LOL T MORT!"
 TMPDIR="/tmp"
 OUTDIR="/tmp"
 OUTFILE="lock.png"
@@ -61,6 +61,7 @@ function generate_lockscreen {
 
   # Compose lockscreens together (per monitor)
     GEOMETRY=$( xrandr -q | grep -w connected | sed -n ${IDENTIFIER}p | sed s/\ primary//g | cut -d " " -f3)
+    [[ $GEOMETRY =~ ^([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+) ]] && \
     convert ${OUTDIR}/${OUTFILE} \
 	    ${TMPDIR}/lock${IDENTIFIER}.png -geometry ${GEOMETRY} -composite \
   	    ${OUTDIR}/${OUTFILE}
